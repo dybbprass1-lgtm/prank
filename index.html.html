@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>⚠️ SYSTEM ALERT</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#000;font-family:'Courier New',monospace;color:#0f0}
+  
+  body{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#000;
+    cursor:none;
+  }
+
+  #terminal{
+    width:100%;
+    max-width:900px;
+    height:100vh;
+    padding:20px;
+    overflow-y:auto;
+    font-size:14px;
+    line-height:1.5;
+    text-shadow:0 0 8px currentColor;
+    scrollbar-width:none;
+  }
+  #terminal::-webkit-scrollbar{display:none}
+
+  .line{white-space:pre-wrap;word-break:break-all}
+  .red{color:#ff2b2b;text-shadow:0 0 12px #ff2b2b}
+  .yellow{color:#ffd400;text-shadow:0 0 12px #ffd400}
+  .cyan{color:#00e0ff;text-shadow:0 0 12px #00e0ff}
+  .white{color:#fff;text-shadow:0 0 12px #fff}
+  .green{color:#0f0}
+
+  .blink{animation:blink .6s infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .glitch{
+    animation:glitch .15s infinite;
+  }
+  @keyframes glitch{
+    0%{transform:translate(0)}
+    20%{transform:translate(-2px,2px)}
+    40%{transform:translate(2px,-2px)}
+    60%{transform:translate(-1px,-1px)}
+    80%{transform:translate(1px,1px)}
+    100%{transform:translate(0)}
+  }
+
+  .shake{animation:shake .3s infinite}
+  @keyframes shake{
+    0%,100%{transform:translate(0)}
+    25%{transform:translate(-4px,3px)}
+    50%{transform:translate(4px,-3px)}
+    75%{transform:translate(-3px,-4px)}
+  }
+
+  /* Progress bar */
+  .bar{
+    display:inline-block;
+    width:220px;
+    height:12px;
+    border:1px solid #0f0;
+    vertical-align:middle;
+    margin:0 8px;
+    position:relative;
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%;
+    background:#0f0;
+    width:0%;
+    transition:width .1s linear;
+    box-shadow:0 0 10px #0f0;
+  }
+  .bar-fill.red{background:#ff2b2b;box-shadow:0 0 10px #ff2b2b}
+
+  /* Fake popup */
+  .popup{
+    position:fixed;
+    background:#1a0000;
+    border:2px solid #ff2b2b;
+    color:#ff2b2b;
+    padding:14px 20px;
+    font-size:13px;
+    box-shadow:0 0 30px #ff2b2b;
+    z-index:9999;
+    animation:popIn .2s ease-out;
+    font-family:'Courier New',monospace;
+  }
+  @keyframes popIn{
+    from{transform:scale(.5);opacity:0}
+    to{transform:scale(1);opacity:1}
+  }
+  .popup .title{
+    font-weight:bold;
+    margin-bottom:8px;
+    border-bottom:1px solid #ff2b2b;
+    padding-bottom:6px;
+  }
+  .popup button{
+    background:#ff2b2b;
+    border:none;
+    color:#000;
+    padding:6px 14px;
+    margin-top:10px;
+    cursor:pointer;
+    font-weight:bold;
+    font-family:inherit;
+    font-size:12px;
+  }
+
+  /* Scanlines */
+  body::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:repeating-linear-gradient(
+      0deg,
+      rgba(0,255,0,.04) 0px,
+      rgba(0,255,0,.04) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events:none;
+    z-index:10000;
+  }
+
+  /* Red flash overlay */
+  .flash{
+    position:fixed;
+    inset:0;
+    background:#ff0000;
+    opacity:0;
+    pointer-events:none;
+    z-index:9998;
+    transition:opacity .1s;
+  }
+  .flash.on{opacity:.4}
+
+  /* Final reveal */
+  #reveal{
+    position:fixed;
+    inset:0;
+    background:#000;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    text-align:center;
+    padding:30px;
+    z-index:10001;
+    cursor:default;
+  }
+  #reveal h1{
+    font-size:clamp(1.8rem,6vw,3.5rem);
+    color:#0f0;
+    text-shadow:0 0 30px #0f0;
+    margin-bottom:20px;
+    animation:popIn .5s ease-out;
+    font-family:'Segoe UI',sans-serif;
+  }
+  #reveal p{
+    color:#8a8aa3;
+    font-size:1.1rem;
+    max-width:500px;
+    margin-bottom:10px;
+    font-family:'Segoe UI',sans-serif;
+  }
+  #reveal .emoji{font-size:5rem;margin-bottom:10px;animation:blink 1s infinite}
+</style>
+</head>
+<body>
+
+<div class="flash" id="flash"></div>
+
+<div id="terminal"></div>
+
+<div id="reveal">
+  <div class="emoji">😂</div>
+  <h1>KENA PRANK!!</h1>
+  <p>Santai bro, ini cuma prank HTML. Tidak ada virus, HP/laptop kamu aman.</p>
+  <p style="color:#7c5cff;font-weight:bold">— dari temanmu 😜</p>
+</div>
+
+<script>
+  const term = document.getElementById('terminal');
+  const flash = document.getElementById('flash');
+  const reveal = document.getElementById('reveal');
+
+  // Prevent close attempts
+  window.addEventListener('beforeunload', (e) => {
+    if(!revealed){
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  let revealed = false;
+
+  // ===== Helpers =====
+  function addLine(text, cls = 'green', speed = 15) {
+    return new Promise(resolve => {
+      const div = document.createElement('div');
+      div.className = 'line ' + cls;
+      term.appendChild(div);
+      let i = 0;
+      const timer = setInterval(() => {
+        div.textContent += text[i] || '';
+        i++;
+        term.scrollTop = term.scrollHeight;
+        if (i >= text.length) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, speed);
+    });
+  }
+
+  function instant(text, cls = 'green') {
+    const div = document.createElement('div');
+    div.className = 'line ' + cls;
+    div.textContent = text;
+    term.appendChild(div);
+    term.scrollTop = term.scrollHeight;
+  }
+
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  function randHex(len){
+    const chars = '0123456789ABCDEF';
+    let s = '';
+    for(let i=0;i<len;i++) s += chars[Math.floor(Math.random()*16)];
+    if(len > 4) return s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12)+'-'+s.slice(12);
+    return s;
+  }
+
+  // ===== Fake popup =====
+  function spawnPopup(msg, x, y, showButton = true) {
+    const p = document.createElement('div');
+    p.className = 'popup';
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.innerHTML = `
+      <div class="title">⚠ CRITICAL ERROR</div>
+      <div>${msg}</div>
+      ${showButton ? '<button>OK</button>' : ''}
+    `;
+    if (showButton) {
+      p.querySelector('button').onclick = () => p.remove();
+    }
+    document.body.appendChild(p);
+    return p;
+  }
+
+  // ===== Progress bar =====
+  function makeProgress(label, color = 'green', duration = 2000) {
+    return new Promise(resolve => {
+      const div = document.createElement('div');
+      div.className = 'line ' + (color === 'red' ? 'red' : 'green');
+      div.innerHTML = `${label} <span class="bar"><span class="bar-fill ${color==='red'?'red':''}"></span></span> <span class="pct">0%</span>`;
+      term.appendChild(div);
+      const fill = div.querySelector('.bar-fill');
+      const pct = div.querySelector('.pct');
+      const start = performance.now();
+      const tick = (now) => {
+        const p = Math.min((now - start) / duration, 1);
+        fill.style.width = (p*100) + '%';
+        pct.textContent = Math.floor(p*100) + '%';
+        term.scrollTop = term.scrollHeight;
+        if (p < 1) requestAnimationFrame(tick);
+        else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  // ===== Main sequence =====
+  async function run() {
+    // Boot screen
+    await sleep(300);
+    instant('═══════════════════════════════════════════════', 'red');
+    instant('   ██╗   ██╗██╗██████╗ ██╗   ██╗███████╗', 'red');
+    instant('   ██║   ██║██║██╔══██╗██║   ██║██╔════╝', 'red');
+    instant('   ██║   ██║██║██████╔╝██║   ██║█████╗  ', 'red');
+    instant('   ╚██╗ ██╔╝██║██╔══██╗╚██╗ ██╔╝██╔══╝  ', 'red');
+    instant('    ╚████╔╝ ██║██║  ██║ ╚████╔╝ ███████╗', 'red');
+    instant('     ╚═══╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝', 'red');
+    instant('═══════════════════════════════════════════════', 'red');
+    await sleep(600);
+
+    await addLine('> Initializing VIRUS.EXE ...', 'yellow', 20);
+    await sleep(400);
+    await addLine('> Bypassing firewall ......... [OK]', 'yellow', 20);
+    await addLine('> Injecting payload .......... [OK]', 'yellow', 20);
+    await addLine('> Establishing connection .... [OK]', 'yellow', 20);
+    await sleep(300);
+
+    // Fake IP grabbing
+    for (let i = 0; i < 3; i++) {
+      await addLine(`> Scanning network 192.168.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)} ...`, 'cyan', 10);
+      await sleep(150);
+    }
+    await sleep(300);
+
+    // Fake user info
+    const ua = navigator.userAgent.includes('Mobile') ? 'MOBILE DEVICE' : 'DESKTOP PC';
+    const platform = navigator.platform || 'UNKNOWN';
+    const now = new Date().toLocaleString('id-ID');
+
+    instant('');
+    await addLine('╔═══════ DATA YANG BERHASIL DICURI ═══════╗', 'red', 8);
+    await sleep(300);
+    await addLine(`  ▸ Device     : ${ua}`, 'white', 15);
+    await addLine(`  ▸ Platform   : ${platform}`, 'white', 15);
+    await addLine(`  ▸ Waktu Akses: ${now}`, 'white', 15);
+    await addLine(`  ▸ IP Address : 182.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`, 'white', 15);
+    await addLine(`  ▸ Session ID : ${randHex(16)}`, 'white', 15);
+    await addLine(`  ▸ Browser    : ${navigator.userAgent.split(' ').slice(-2).join(' ')}`, 'white', 15);
+    await sleep(400);
+    instant('╚═════════════════════════════════════════╝', 'red');
+    instant('');
+
+    // Flash + popup
+    flash.classList.add('on');
+    setTimeout(()=>flash.classList.remove('on'),150);
+    spawnPopup('System integrity compromised!', 40, 40, true);
+    await sleep(500);
+    spawnPopup('Uploading your files...', 200, 120, true);
+    await sleep(500);
+
+    // Progress bars
+    await makeProgress('Uploading photos   ', 'red', 1800);
+    await makeProgress('Uploading contacts ', 'red', 1600);
+    await makeProgress('Uploading messages ', 'red', 1400);
+    await makeProgress('Wiping local data  ', 'red', 1600);
+
+    await sleep(300);
+    instant('');
+
+    // Fake countdown
+    for (let i = 5; i > 0; i--) {
+      instant(`   SELF DESTRUCT IN ${i} ...`, 'red');
+      term.scrollTop = term.scrollHeight;
+      await sleep(800);
+    }
+
+    // Glitch effect
+    term.classList.add('glitch', 'shake');
+    flash.classList.add('on');
+    await sleep(400);
+    flash.classList.remove('on');
+    await sleep(200);
+    flash.classList.add('on');
+    await sleep(200);
+    flash.classList.remove('on');
+    term.classList.remove('glitch', 'shake');
+
+    // Open many popups for chaos
+    for (let i = 0; i < 6; i++) {
+      spawnPopup('ERROR 0x' + randHex(4) + ' — CRITICAL', 
+        Math.random()*(window.innerWidth-260),
+        Math.random()*(window.innerHeight-120),
+        true);
+      await sleep(150);
+    }
+
+    await sleep(1500);
+    instant('');
+    await addLine('> Retrieving terminal control ...', 'yellow', 20);
+    await sleep(600);
+    await addLine('> DO NOT CLOSE THIS WINDOW', 'red', 30);
+    await sleep(1000);
+
+    // THE REVEAL
+    revealed = true;
+    document.querySelectorAll('.popup').forEach(p => p.remove());
+    term.innerHTML = '';
+    flash.style.background = '#000';
+    reveal.style.display = 'flex';
+    document.body.style.cursor = 'default';
+  }
+
+  run();
+</script>
+</body>
+</html>
